@@ -1,0 +1,4 @@
+arvore_teste
+a -- b
+b -- c
+b -- d

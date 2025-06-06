@@ -1,6 +1,7 @@
 #ifndef GRAFO_H
 #define GRAFO_H
 
+#include <stdio.h>
 //------------------------------------------------------------------------------
 // estrutura de dados para representar um grafo
 

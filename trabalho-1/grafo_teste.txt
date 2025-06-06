@@ -1,0 +1,17 @@
+//
+//  Exemplo de entrada para le_grafo
+//  ── linhas que começam com // são comentários e serão ignoradas
+//
+
+meu_grafo_teste                 // nome do grafo
+
+// componente K3
+a -- b 4
+b -- c 7
+c -- a 2
+
+// componente K2
+d -- e                          // peso opcional omitido (assume 1)
+
+// vértice isolado
+f

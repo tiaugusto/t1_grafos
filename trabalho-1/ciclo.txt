@@ -1,0 +1,5 @@
+ciclo_par
+a -- b
+b -- c
+c -- d
+d -- a

@@ -1,0 +1,5 @@
+estrela
+c -- a
+c -- b
+c -- d
+c -- e
