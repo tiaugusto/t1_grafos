@@ -1,0 +1,12 @@
+// o nome do grafo
+triângulo_com_vértice
+
+// uma lista com três arestas e seus pesos
+nove
+um -- dois 12
+dois -- tres 23
+tres -- quatro
+quatro -- cinco
+cinco -- seis
+seis -- um
+

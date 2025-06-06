@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
+#include <stdbool.h>
 
 typedef struct adj {
     unsigned int dest;       // índice do vértice vizinho
@@ -241,53 +242,74 @@ unsigned int bipartido(grafo *g)
     return is_bip;
 }
 
-unsigned int diametro_componente(const grafo *g,
-                                        const unsigned int *lista,
-                                        unsigned int tam)
+static void dijkstra(const grafo *g, unsigned int s, int *dist)
 {
     unsigned int n = g->n_vertices;
+    bool *vis = malloc(n * sizeof(bool));
+    for (int i = 0; i < n; i++) vis[i] = false;
+
+    for (unsigned i = 0; i < n; ++i) dist[i] = INT_MAX;
+    dist[s] = 0;
+
+    for (unsigned iter = 0; iter < n; ++iter) {
+        /* pega o vértice não visitado com menor dist */
+        int best = -1, bestd = INT_MAX;
+        for (unsigned v = 0; v < n; ++v)
+            if (!vis[v] && dist[v] < bestd) { bestd = dist[v]; best = v; }
+        if (best == -1) break;          /* resto é inalcançável            */
+
+        vis[best] = true;
+        for (adj_t *a = g->v[best].cab; a; a = a->prox) {
+            unsigned v = a->dest;
+            int w = a->peso > 0 ? a->peso : 1;      /* peso 1 default */
+            if (!vis[v] && dist[best] + w < dist[v])
+                dist[v] = dist[best] + w;
+        }
+    }
+    free(vis);
+}
+
+
+unsigned int diametro_componente(const grafo *g,
+                                 const unsigned int *lista,
+                                 unsigned int tam)
+{
+    unsigned int n = g->n_vertices;
+    int *dist = malloc(n * sizeof(int));
     unsigned int diam = 0;
 
-    int *dist = malloc(n * sizeof(int));
+    for (unsigned idx = 0; idx < tam; ++idx) {
+        unsigned s = lista[idx];
+        dijkstra(g, s, dist);
 
-    for (unsigned int idx = 0; idx < tam; ++idx) {
-        unsigned int s = lista[idx];
-        for (unsigned int i = 0; i < n; ++i) dist[i] = -1;
-
-        /* BFS a partir de s */
-        unsigned int *q = malloc(tam * sizeof(unsigned int));
-        unsigned int ini = 0, fim = 0;
-
-        dist[s] = 0;
-        q[fim++] = s;
-
-        while (ini < fim) {
-            unsigned int u = q[ini++];
-            for (adj_t *a = g->v[u].cab; a; a = a->prox) {
-                unsigned int v = a->dest;
-                if (dist[v] == -1) {
-                    dist[v] = dist[u] + 1;
-                    q[fim++] = v;
-                }
-            }
-        }
-        /* maior distância a partir de s */
-        for (unsigned int i = 0; i < n; ++i)
-            if (dist[i] > (int)diam)
-                diam = dist[i];
-
-        free(q);
+        for (unsigned v = 0; v < n; ++v)
+            if (dist[v] != INT_MAX && (unsigned)dist[v] > diam)
+                diam = dist[v];
     }
     free(dist);
     return diam;
 }
+
+
+/* ------------------------------------------------------------------ */
+/* comparador para ordenar diâmetros em ordem não-decrescente --------*/
+static int cmp_uint(const void *a, const void *b)
+{
+    unsigned int ua = *(const unsigned int *)a;
+    unsigned int ub = *(const unsigned int *)b;
+    if (ua < ub) return -1;
+    if (ua > ub) return  1;
+    return 0;
+}
+
 
 unsigned int componentes(const grafo *g,
                                 int ign_v,              /*  vértice a ignorar ou -1   */
                                 int ign_u, int ign_w)   /*  aresta (u,w) a ignorar ou -1 */
 {
     unsigned int n = g->n_vertices;
-    char *vis = calloc(n, 1);
+    bool *vis = malloc(n * sizeof(bool));
+    for (unsigned int i = 0; i < n; i++) vis[i] = false;
     unsigned int comps = 0, *fila = malloc(n * sizeof(unsigned int));
 
     for (unsigned int s = 0; s < n; ++s) {
@@ -295,14 +317,14 @@ unsigned int componentes(const grafo *g,
         /* nova componente */
         comps++;
         unsigned int ini = 0, fim = 0;
-        fila[fim++] = s;  vis[s] = 1;
+        fila[fim++] = s;  vis[s] = true;
 
         while (ini < fim) {
             unsigned int u = fila[ini++];
             for (adj_t *a = g->v[u].cab; a; a = a->prox) {
                 unsigned int v = a->dest;
-                if ((int)v == ign_v) continue;                 /* ignora vértice        */
-                /* ignora aresta específica                      */
+                if ((int)v == ign_v) continue; /*ignora vértice*/
+                /* ignora aresta específica*/
                 if ((int)u == ign_u && (int)v == ign_w) continue;
                 if ((int)u == ign_w && (int)v == ign_u) continue;
                 if (!vis[v]) { vis[v] = 1; fila[fim++] = v; }
@@ -319,11 +341,12 @@ char *diametros(grafo *g)
     unsigned int n = g->n_vertices;
     if (n == 0) return strdup("");
 
-    /* agrupa vértices por componente ----------------------------------- */
+    /* agrupa vértices por componente */
     int *comp = malloc(n * sizeof(int));
     unsigned int ncomp = calcula_componentes(g, comp);
 
-    unsigned int *tam = calloc(ncomp, sizeof(unsigned int));
+    unsigned int *tam = malloc(ncomp * sizeof(unsigned int));
+    memset(tam, 0, ncomp * sizeof(unsigned int));
     for (unsigned int i = 0; i < n; ++i) tam[comp[i]]++;
 
     unsigned int **lista = malloc(ncomp * sizeof(unsigned int *));
@@ -334,15 +357,14 @@ char *diametros(grafo *g)
     for (unsigned int i = 0; i < n; ++i)
         lista[comp[i]][tam[comp[i]]++] = i;
 
-    /* calcula diâmetros ------------------------------------------------- */
+    /* calcula diâmetros */
     unsigned int *d = malloc(ncomp * sizeof(unsigned int));
     for (unsigned int c = 0; c < ncomp; ++c)
         d[c] = diametro_componente(g, lista[c], tam[c]);
 
-    /* ordena */
-    for (unsigned int i = 0; i + 1 < ncomp; ++i)
-        for (unsigned int j = i + 1; j < ncomp; ++j)
-            if (d[i] > d[j]) { unsigned tmp = d[i]; d[i] = d[j]; d[j] = tmp; }
+    
+    /* ordena em ordem não-decrescente usando qsort */
+    qsort(d, ncomp, sizeof(unsigned int), cmp_uint);
 
     /* monta string */
     size_t len = 0;
@@ -378,8 +400,7 @@ char *vertices_corte(grafo *g)
     }
     if (qtd == 0) { free(arts); return strdup(""); }
 
-    qsort(arts, qtd, sizeof(char*),
-          (int(*)(const void*,const void*)) strcmp);
+    qsort(arts, qtd, sizeof(char*), (int(*)(const void*,const void*)) strcmp);
 
     size_t len = 0;
     for (unsigned i = 0; i < qtd; ++i) len += strlen(arts[i]) + 1;
