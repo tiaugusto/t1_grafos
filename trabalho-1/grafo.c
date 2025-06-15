@@ -266,30 +266,40 @@ unsigned int bipartido(grafo *g)
     return is_bip;
 }
 
-static void dijkstra(const grafo *g, unsigned int s, unsigned int *dist)
-{
+static void dijkstra(const grafo *g, unsigned int s, unsigned int *dist) {
     unsigned int n = g->n_vertices;
-    bool *vis = malloc(n * sizeof(bool));
-    for (unsigned int i = 0; i < n; i++) vis[i] = false;
+    bool *vis = malloc(n * sizeof *vis);
+    if (!vis) { perror("malloc"); exit(EXIT_FAILURE); }
 
-    for (unsigned int i = 0; i < n; ++i) dist[i] = UINT_MAX;
+    // inicializa dist[] e vis[]
+    for (unsigned int i = 0; i < n; i++) {
+        dist[i] = UINT_MAX;// "infinito"
+        vis[i] = false;
+    }
     dist[s] = 0;
 
-    for (unsigned iter = 0; iter < n; ++iter) {
-        /* pega o vértice não visitado com menor dist */
-        unsigned int best = 0, bestd = UINT_MAX;
-        for (unsigned v = 0; v < n; ++v)
-            if (!vis[v] && dist[v] < bestd) { bestd = dist[v]; best = v; }
-        if (best == 0) break; //resto é inalcançável
-
+    // para cada vértice, escolhe o não visitado com menor dist
+    for (unsigned int it = 0; it < n; it++) {
+        unsigned int best = UINT_MAX;
+        unsigned int bestd = UINT_MAX;
+        for (unsigned int v = 0; v < n; v++) {
+            if (!vis[v] && dist[v] < bestd) {
+                best = v;
+                bestd = dist[v];
+            }
+        }
+        if (best == UINT_MAX) break;       // resto é inalcançável
         vis[best] = true;
+
         for (adj_t *a = g->v[best].cab; a; a = a->prox) {
             unsigned v = a->dest;
-            unsigned int w = a->peso;// peso 1 default
-            if (!vis[v] && dist[best] + w < dist[v])
+            unsigned int w = a->peso;  // peso >= 1
+            if (!vis[v] && dist[best] != UINT_MAX && dist[best] + w < dist[v]) {
                 dist[v] = dist[best] + w;
+            }
         }
     }
+
     free(vis);
 }
 
@@ -302,12 +312,12 @@ static unsigned int diametro_componente(const grafo *g,
     unsigned int *dist = malloc(n * sizeof(unsigned int));
     unsigned int diam = 0;
 
-    for (unsigned int idx = 0; idx < tam; ++idx) {
-        unsigned s = lista[idx];
+    for (unsigned int idx = 0; idx < tam; idx++) {
+        unsigned int s = lista[idx];
         dijkstra(g, s, dist);
 
-        for (unsigned int v = 0; v < n; ++v)
-            if (dist[v] != UINT_MAX && (unsigned int)dist[v] > diam)
+        for (unsigned int v = 0; v < n; v++)
+            if (dist[v] != UINT_MAX && dist[v] > diam)
                 diam = dist[v];
     }
     free(dist);
@@ -407,6 +417,14 @@ char *diametros(grafo *g)
     return out;
 }
 
+/* comparador para qsort de char* */
+static int cmp_str(const void *a, const void *b)
+{
+    const char *sa = *(const char * const *)a;
+    const char *sb = *(const char * const *)b;
+    return strcmp(sa, sb);
+}
+
 char *vertices_corte(grafo *g)
 {
     if (!g) return NULL;
@@ -423,7 +441,7 @@ char *vertices_corte(grafo *g)
     }
     if (qtd == 0) { free(arts); return strdup(""); }
 
-    qsort(arts, qtd, sizeof(char*), (int(*)(const void*,const void*)) strcmp);
+    qsort(arts, qtd, sizeof *arts, cmp_str);
 
     size_t len = 0;
     for (unsigned i = 0; i < qtd; ++i) len += strlen(arts[i]) + 1;
@@ -433,15 +451,6 @@ char *vertices_corte(grafo *g)
     }
     free(arts); return out;
 }
-
-/* comparador para qsort de char* */
-static int cmp_str(const void *a, const void *b)
-{
-    const char *sa = *(const char * const *)a;
-    const char *sb = *(const char * const *)b;
-    return strcmp(sa, sb);
-}
-
 
 char *arestas_corte(grafo *g)
 {
