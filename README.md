@@ -2,6 +2,7 @@
 
 Tiago Augusto Fiatte Prestes - GRR20232334
 Thiago Zilio Assunção - GRR20234265
+
 Este projeto implementa um analisador de grafos não direcionados com suporte às seguintes análises:
 
 - Componentes conexas  
