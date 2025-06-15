@@ -8,7 +8,7 @@
 
 typedef struct adj {
     unsigned int dest;       // índice do vértice vizinho
-    unsigned int peso;                // peso da aresta ( >= 1 )
+    unsigned int peso;       // peso da aresta ( >= 1 )
     struct adj *prox;        // próximo nó da lista
 } adj_t;
 
@@ -35,7 +35,7 @@ static char *strdup(const char *s) {
 }
 
 static unsigned int busca_vertice(const grafo *g, const char *nome) {
-    for (unsigned int i = 0; i < g->n_vertices; ++i)
+    for (unsigned int i = 0; i < g->n_vertices; i++)
         if (strcmp(g->v[i].nome, nome) == 0)
             return i;
     return UINT_MAX;
@@ -132,7 +132,7 @@ grafo *le_grafo(FILE *f)
         unsigned int peso = 1;
         // split em 3 partes: v1, v2, peso
         if (sscanf(p, " %2047s -- %2047s %u", v1, v2, &peso) < 2)
-            continue;   // entrada garantida bem formada ⇒ não deve ocorrer
+            continue;
 
 
         unsigned int u = cria_vertice(g, v1);
@@ -146,7 +146,7 @@ unsigned int destroi_grafo(grafo *g)
 {
     if (!g) return 0;
 
-    for (unsigned int i = 0; i < g->n_vertices; ++i) {
+    for (unsigned int i = 0; i < g->n_vertices; i++) {
         adj_t *a = g->v[i].cab;
         while (a) {
             adj_t *tmp = a->prox;
@@ -179,18 +179,18 @@ static void bfs(const grafo *g,
     if (!fila) { perror("malloc"); exit(EXIT_FAILURE); }
 
     unsigned int ini = 0, fim = 0;
-    dist[origem]        = 0;
-    componente[origem]  = comp_id;
-    fila[fim++]         = origem;
+    dist[origem] = 0;
+    componente[origem] = comp_id;
+    fila[fim++] = origem;
 
     while (ini < fim) {
         unsigned int u = fila[ini++];
         for (adj_t *a = g->v[u].cab; a; a = a->prox) {
             unsigned int v = a->dest;
             if (dist[v] == -1) {
-                dist[v]           = dist[u] + 1;
-                componente[v]     = comp_id;
-                fila[fim++]       = v;
+                dist[v] = dist[u] + 1;
+                componente[v] = comp_id;
+                fila[fim++] = v;
             }
         }
     }
@@ -198,23 +198,21 @@ static void bfs(const grafo *g,
     free(fila);
 }
 
-// Versão modificada de calcula_componentes, alocando dist como int[]
-// e usando unsigned int *comps para saída
 static unsigned int calcula_componentes(const grafo *g,
                                         unsigned int *comps)
 {
     unsigned int n = g->n_vertices;
     int *dist = malloc(n * sizeof(*dist));
     if (!dist) { perror("malloc"); exit(EXIT_FAILURE); }
-    for (unsigned int i = 0; i < n; ++i) dist[i] = -1;
+    for (unsigned int i = 0; i < n; i++) dist[i] = -1;
 
     if (comps) {
-        for (unsigned int i = 0; i < n; ++i)
+        for (unsigned int i = 0; i < n; i++)
             comps[i] = UINT_MAX;
     }
 
     unsigned int cnt = 0;
-    for (unsigned int i = 0; i < n; ++i) {
+    for (unsigned int i = 0; i < n; i++) {
         if (dist[i] == -1) {
             bfs(g, i, dist, comps ? comps : (unsigned int*)dist, cnt);
             cnt++;
@@ -271,7 +269,6 @@ static void dijkstra(const grafo *g, unsigned int s, unsigned int *dist) {
     bool *vis = malloc(n * sizeof *vis);
     if (!vis) { perror("malloc"); exit(EXIT_FAILURE); }
 
-    // inicializa dist[] e vis[]
     for (unsigned int i = 0; i < n; i++) {
         dist[i] = UINT_MAX;// "infinito"
         vis[i] = false;
@@ -288,12 +285,12 @@ static void dijkstra(const grafo *g, unsigned int s, unsigned int *dist) {
                 bestd = dist[v];
             }
         }
-        if (best == UINT_MAX) break;       // resto é inalcançável
+        if (best == UINT_MAX) break; // resto é inalcançável
         vis[best] = true;
 
         for (adj_t *a = g->v[best].cab; a; a = a->prox) {
             unsigned v = a->dest;
-            unsigned int w = a->peso;  // peso >= 1
+            unsigned int w = a->peso;// peso >= 1
             if (!vis[v] && dist[best] != UINT_MAX && dist[best] + w < dist[v]) {
                 dist[v] = dist[best] + w;
             }
@@ -337,15 +334,15 @@ static int cmp_uint(const void *a, const void *b)
 
 
 static unsigned int componentes(const grafo *g,
-                                int ign_v,              /*  vértice a ignorar ou -1   */
-                                int ign_u, int ign_w)   /*  aresta (u,w) a ignorar ou -1 */
+                                int ign_v,/*  vértice a ignorar ou -1   */
+                                int ign_u, int ign_w)/*  aresta (u,w) a ignorar ou -1 */
 {
     unsigned int n = g->n_vertices;
     bool *vis = malloc(n * sizeof(bool));
     for (unsigned int i = 0; i < n; i++) vis[i] = false;
     unsigned int comps = 0, *fila = malloc(n * sizeof(unsigned int));
 
-    for (unsigned int s = 0; s < n; ++s) {
+    for (unsigned int s = 0; s < n; s++) {
         if (s == (unsigned)ign_v || vis[s]) continue;
         /* nova componente */
         comps++;
@@ -380,19 +377,19 @@ char *diametros(grafo *g)
 
     unsigned int *tam = malloc(ncomp * sizeof(unsigned int));
     memset(tam, 0, ncomp * sizeof(unsigned int));
-    for (unsigned int i = 0; i < n; ++i) tam[comp[i]]++;
+    for (unsigned int i = 0; i < n; i++) tam[comp[i]]++;
 
     unsigned int **lista = malloc(ncomp * sizeof(unsigned int *));
-    for (unsigned int c = 0; c < ncomp; ++c)
+    for (unsigned int c = 0; c < ncomp; c++)
         lista[c] = malloc(tam[c] * sizeof(unsigned int));
 
-    for (unsigned int c = 0; c < ncomp; ++c) tam[c] = 0;
-    for (unsigned int i = 0; i < n; ++i)
+    for (unsigned int c = 0; c < ncomp; c++) tam[c] = 0;
+    for (unsigned int i = 0; i < n; i++)
         lista[comp[i]][tam[comp[i]]++] = i;
 
     /* calcula diâmetros */
     unsigned int *d = malloc(ncomp * sizeof(unsigned int));
-    for (unsigned int c = 0; c < ncomp; ++c)
+    for (unsigned int c = 0; c < ncomp; c++)
         d[c] = diametro_componente(g, lista[c], tam[c]);
 
     
@@ -401,18 +398,17 @@ char *diametros(grafo *g)
 
     /* monta string */
     size_t len = 0;
-    for (unsigned int c = 0; c < ncomp; ++c) {
+    for (unsigned int c = 0; c < ncomp; c++) {
         char buf[32]; sprintf(buf, "%u", d[c]);
         len += strlen(buf) + 1;
     }
     char *out = malloc(len ? len : 1); out[0] = '\0';
-    for (unsigned int c = 0; c < ncomp; ++c) {
+    for (unsigned int c = 0; c < ncomp; c++) {
         char buf[32]; sprintf(buf, "%u", d[c]);
         strcat(out, buf); if (c + 1 < ncomp) strcat(out, " ");
     }
 
-    /* libera */
-    for (unsigned int c = 0; c < ncomp; ++c) free(lista[c]);
+    for (unsigned int c = 0; c < ncomp; c++) free(lista[c]);
     free(lista); free(tam); free(comp); free(d);
     return out;
 }
@@ -435,7 +431,7 @@ char *vertices_corte(grafo *g)
     char **arts = malloc(n * sizeof(char *));
     unsigned int qtd = 0;
 
-    for (unsigned int v = 0; v < n; ++v) {
+    for (unsigned int v = 0; v < n; v++) {
         if (componentes(g, (int)v, -1, -1) > comps0)
             arts[qtd++] = g->v[v].nome;
     }
@@ -444,9 +440,9 @@ char *vertices_corte(grafo *g)
     qsort(arts, qtd, sizeof *arts, cmp_str);
 
     size_t len = 0;
-    for (unsigned i = 0; i < qtd; ++i) len += strlen(arts[i]) + 1;
+    for (unsigned i = 0; i < qtd; i++) len += strlen(arts[i]) + 1;
     char *out = malloc(len); out[0] = '\0';
-    for (unsigned i = 0; i < qtd; ++i) {
+    for (unsigned i = 0; i < qtd; i++) {
         strcat(out, arts[i]); if (i + 1 < qtd) strcat(out, " ");
     }
     free(arts); return out;
@@ -464,7 +460,7 @@ char *arestas_corte(grafo *g)
     char **edges = malloc(g->n_arestas * sizeof(char *));
     unsigned int qtd = 0;
 
-    for (unsigned int u = 0; u < n; ++u) {
+    for (unsigned int u = 0; u < n; u++) {
         for (adj_t *a = g->v[u].cab; a; a = a->prox) {
             unsigned int v = a->dest;
             if (u < v) { // evita duplicar arestas
@@ -492,15 +488,15 @@ char *arestas_corte(grafo *g)
 
     /* monta string final */
     size_t len = 0;
-    for (unsigned i = 0; i < qtd; ++i) len += strlen(edges[i]) + 1;
+    for (unsigned i = 0; i < qtd; i++) len += strlen(edges[i]) + 1;
 
     char *out = malloc(len);
     out[0] = '\0';
 
-    for (unsigned i = 0; i < qtd; ++i) {
+    for (unsigned i = 0; i < qtd; i++) {
         strcat(out, edges[i]);
         if (i + 1 < qtd) strcat(out, " ");
-        free(edges[i]);          /* libera string individual          */
+        free(edges[i]);
     }
     free(edges);
     return out;
