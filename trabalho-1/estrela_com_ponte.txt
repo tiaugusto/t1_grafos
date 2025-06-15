@@ -1,0 +1,7 @@
+// Estrela com um ramo que cria uma aresta de corte
+estrela_com_ponte
+centro -- a 1
+centro -- b 1
+centro -- c 1
+centro -- d 1
+c -- folha 7

@@ -1,0 +1,14 @@
+mixcomp
+// Componente 1: ciclo ímpar (não-bipartido)
+X
+Y
+Z
+X -- Y
+Y -- Z
+Z -- X
+// Componente 2: caminho (bipartido)
+P
+Q
+R
+P -- Q
+Q -- R

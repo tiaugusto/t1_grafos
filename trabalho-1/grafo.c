@@ -8,7 +8,7 @@
 
 typedef struct adj {
     unsigned int dest;       // índice do vértice vizinho
-    int peso;                // peso da aresta ( >= 1 )
+    unsigned int peso;                // peso da aresta ( >= 1 )
     struct adj *prox;        // próximo nó da lista
 } adj_t;
 
@@ -34,7 +34,7 @@ static char *strdup(const char *s) {
     return strcpy(d, s);
 }
 
-unsigned int busca_vertice(const grafo *g, const char *nome) {
+static unsigned int busca_vertice(const grafo *g, const char *nome) {
     for (unsigned int i = 0; i < g->n_vertices; ++i)
         if (strcmp(g->v[i].nome, nome) == 0)
             return i;
@@ -42,7 +42,7 @@ unsigned int busca_vertice(const grafo *g, const char *nome) {
 }
 
 
-unsigned int cria_vertice(grafo *g, const char *nome)
+static unsigned int cria_vertice(grafo *g, const char *nome)
 {
     unsigned int idx = busca_vertice(g, nome);
     if (idx != UINT_MAX)
@@ -63,8 +63,17 @@ unsigned int cria_vertice(grafo *g, const char *nome)
     return idx;
 }
 
-void adiciona_aresta(grafo *g, unsigned int u, unsigned int v, int p)
+static bool existe_aresta(const grafo *g, unsigned int u, unsigned int v) {
+    for (adj_t *a = g->v[u].cab; a; a = a->prox)
+        if (a->dest == v) return true;
+    return false;
+}
+
+static void adiciona_aresta(grafo *g, unsigned int u, unsigned int v, unsigned int p)
 {
+    if (u == v) return; // laço próprio
+    if (existe_aresta(g, u, v)) return; // aresta duplicada
+
     adj_t *a = malloc(sizeof(adj_t));
     a->dest = v;
     a->peso = p;
@@ -120,9 +129,9 @@ grafo *le_grafo(FILE *f)
 
         // aresta
         char v1[2048], v2[2048];
-        int peso = 1;
+        unsigned int peso = 1;
         // split em 3 partes: v1, v2, peso
-        if (sscanf(p, " %2047s -- %2047s %d", v1, v2, &peso) < 2)
+        if (sscanf(p, " %2047s -- %2047s %u", v1, v2, &peso) < 2)
             continue;   // entrada garantida bem formada ⇒ não deve ocorrer
 
 
@@ -159,46 +168,61 @@ unsigned int n_vertices(grafo *g) { return g ? g->n_vertices : 0; }
 
 unsigned int n_arestas(grafo *g)  { return g ? g->n_arestas  : 0; }
 
-void bfs(const grafo *g, unsigned int origem,
-                int *dist, int *componente, int comp_id)
+static void bfs(const grafo *g,
+                unsigned int origem,
+                int *dist,
+                unsigned int *componente,
+                unsigned int comp_id)
 {
     unsigned int n = g->n_vertices;
-    unsigned int *q = malloc(n * sizeof(unsigned int));
-    unsigned int ini = 0, fim = 0;
+    unsigned int *fila = malloc(n * sizeof(*fila));
+    if (!fila) { perror("malloc"); exit(EXIT_FAILURE); }
 
-    dist[origem] = 0;
-    componente[origem] = comp_id;
-    q[fim] = origem; fim++;
+    unsigned int ini = 0, fim = 0;
+    dist[origem]        = 0;
+    componente[origem]  = comp_id;
+    fila[fim++]         = origem;
 
     while (ini < fim) {
-        unsigned int u = q[ini]; ini++;
+        unsigned int u = fila[ini++];
         for (adj_t *a = g->v[u].cab; a; a = a->prox) {
             unsigned int v = a->dest;
             if (dist[v] == -1) {
-                dist[v] = dist[u] + 1; // dist sem peso
-                componente[v] = comp_id;
-                q[fim] = v; fim++;
+                dist[v]           = dist[u] + 1;
+                componente[v]     = comp_id;
+                fila[fim++]       = v;
             }
         }
     }
-    free(q);
+
+    free(fila);
 }
 
-unsigned int calcula_componentes(const grafo *g, int *comps)
+// Versão modificada de calcula_componentes, alocando dist como int[]
+// e usando unsigned int *comps para saída
+static unsigned int calcula_componentes(const grafo *g,
+                                        unsigned int *comps)
 {
     unsigned int n = g->n_vertices;
-    int *dist = malloc(n * sizeof(int));
+    int *dist = malloc(n * sizeof(*dist));
+    if (!dist) { perror("malloc"); exit(EXIT_FAILURE); }
     for (unsigned int i = 0; i < n; ++i) dist[i] = -1;
 
-    unsigned int comp = 0;
+    if (comps) {
+        for (unsigned int i = 0; i < n; ++i)
+            comps[i] = UINT_MAX;
+    }
+
+    unsigned int cnt = 0;
     for (unsigned int i = 0; i < n; ++i) {
         if (dist[i] == -1) {
-            bfs(g, i, dist, comps ? comps : dist, comp);
-            comp++;
+            bfs(g, i, dist, comps ? comps : (unsigned int*)dist, cnt);
+            cnt++;
         }
     }
+
     free(dist);
-    return comp;
+    return cnt;
 }
 
 unsigned int n_componentes(grafo *g)
@@ -214,7 +238,7 @@ unsigned int bipartido(grafo *g)
     int *cor = malloc(n * sizeof(int));
     for (unsigned int i = 0; i < n; i++) cor[i] = -1;
 
-    int is_bip = 1;
+    unsigned int is_bip = 1;
     unsigned int *q = malloc(n * sizeof(unsigned int));
 
     for (unsigned int s = 0; s < n && is_bip; s++) {
@@ -242,26 +266,26 @@ unsigned int bipartido(grafo *g)
     return is_bip;
 }
 
-static void dijkstra(const grafo *g, unsigned int s, int *dist)
+static void dijkstra(const grafo *g, unsigned int s, unsigned int *dist)
 {
     unsigned int n = g->n_vertices;
     bool *vis = malloc(n * sizeof(bool));
-    for (int i = 0; i < n; i++) vis[i] = false;
+    for (unsigned int i = 0; i < n; i++) vis[i] = false;
 
-    for (unsigned i = 0; i < n; ++i) dist[i] = INT_MAX;
+    for (unsigned int i = 0; i < n; ++i) dist[i] = UINT_MAX;
     dist[s] = 0;
 
     for (unsigned iter = 0; iter < n; ++iter) {
         /* pega o vértice não visitado com menor dist */
-        int best = -1, bestd = INT_MAX;
+        unsigned int best = 0, bestd = UINT_MAX;
         for (unsigned v = 0; v < n; ++v)
             if (!vis[v] && dist[v] < bestd) { bestd = dist[v]; best = v; }
-        if (best == -1) break;          /* resto é inalcançável            */
+        if (best == 0) break; //resto é inalcançável
 
         vis[best] = true;
         for (adj_t *a = g->v[best].cab; a; a = a->prox) {
             unsigned v = a->dest;
-            int w = a->peso > 0 ? a->peso : 1;      /* peso 1 default */
+            unsigned int w = a->peso;// peso 1 default
             if (!vis[v] && dist[best] + w < dist[v])
                 dist[v] = dist[best] + w;
         }
@@ -270,20 +294,20 @@ static void dijkstra(const grafo *g, unsigned int s, int *dist)
 }
 
 
-unsigned int diametro_componente(const grafo *g,
+static unsigned int diametro_componente(const grafo *g,
                                  const unsigned int *lista,
                                  unsigned int tam)
 {
     unsigned int n = g->n_vertices;
-    int *dist = malloc(n * sizeof(int));
+    unsigned int *dist = malloc(n * sizeof(unsigned int));
     unsigned int diam = 0;
 
-    for (unsigned idx = 0; idx < tam; ++idx) {
+    for (unsigned int idx = 0; idx < tam; ++idx) {
         unsigned s = lista[idx];
         dijkstra(g, s, dist);
 
-        for (unsigned v = 0; v < n; ++v)
-            if (dist[v] != INT_MAX && (unsigned)dist[v] > diam)
+        for (unsigned int v = 0; v < n; ++v)
+            if (dist[v] != UINT_MAX && (unsigned int)dist[v] > diam)
                 diam = dist[v];
     }
     free(dist);
@@ -291,8 +315,7 @@ unsigned int diametro_componente(const grafo *g,
 }
 
 
-/* ------------------------------------------------------------------ */
-/* comparador para ordenar diâmetros em ordem não-decrescente --------*/
+// comparador para ordenar diâmetros em ordem não-decrescente
 static int cmp_uint(const void *a, const void *b)
 {
     unsigned int ua = *(const unsigned int *)a;
@@ -303,7 +326,7 @@ static int cmp_uint(const void *a, const void *b)
 }
 
 
-unsigned int componentes(const grafo *g,
+static unsigned int componentes(const grafo *g,
                                 int ign_v,              /*  vértice a ignorar ou -1   */
                                 int ign_u, int ign_w)   /*  aresta (u,w) a ignorar ou -1 */
 {
@@ -342,7 +365,7 @@ char *diametros(grafo *g)
     if (n == 0) return strdup("");
 
     /* agrupa vértices por componente */
-    int *comp = malloc(n * sizeof(int));
+    unsigned int *comp = malloc(n * sizeof(int));
     unsigned int ncomp = calcula_componentes(g, comp);
 
     unsigned int *tam = malloc(ncomp * sizeof(unsigned int));
@@ -412,7 +435,7 @@ char *vertices_corte(grafo *g)
 }
 
 /* comparador para qsort de char* */
-int cmp_str(const void *a, const void *b)
+static int cmp_str(const void *a, const void *b)
 {
     const char *sa = *(const char * const *)a;
     const char *sb = *(const char * const *)b;

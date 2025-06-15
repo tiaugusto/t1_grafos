@@ -1,0 +1,7 @@
+// Anel ponderado de 5 vértices com pesos variados
+anel_ponderado
+a -- b 2
+b -- c 4
+c -- d 6
+d -- e 8
+e -- a 10

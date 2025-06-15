@@ -3,7 +3,7 @@
 //  ── linhas que começam com // são comentários e serão ignoradas
 //
 
-meu_grafo_teste                 // nome do grafo
+meu_grafo_teste
 
 // componente K3
 a -- b 4

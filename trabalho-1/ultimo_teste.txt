@@ -1,0 +1,35 @@
+stress_grafo
+
+// componente 1: K3 (não bipartido)
+a -- b 10
+b -- c 20
+c -- a 30
+
+// componente 2: árvore com pontes e vértices de corte
+d -- e 1
+e -- f 2
+f -- g 3
+g -- h 4
+
+// componente 3: ciclo par (bipartido)
+i -- j 5
+j -- k 5
+k -- l 5
+l -- i 5
+
+// componente 4: estrela (bipartido, todos ponte exceto centro)
+m
+n
+o
+p
+q
+r
+m -- n 6
+m -- o 6
+m -- p 6
+m -- q 6
+m -- r 6
+
+// componente 5: vértice isolado
+z
+

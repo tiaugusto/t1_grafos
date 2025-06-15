@@ -1,0 +1,14 @@
+// 3 componentes distintos: K3 com pesos, caminho, vértice isolado
+componentes_mistos
+
+// componente 1: triângulo com pesos
+v1 -- v2 5
+v2 -- v3 5
+v3 -- v1 5
+
+// componente 2: caminho linear
+x -- y 3
+y -- z 4
+
+// componente 3: vértice isolado
+isolado
